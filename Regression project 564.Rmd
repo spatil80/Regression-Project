@@ -1,0 +1,170 @@
+---
+title: "Project Regression 564"
+author: "Shruti Ramchandra patil"
+date: "2024-11-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Load Required Libraries
+library(tidyverse)    # For data manipulation and visualization
+library(car)          # For multicollinearity (VIF)
+library(lmtest)       # For heteroscedasticity test
+library(sandwich)     # For robust standard errors
+library(broom)        # For tidying model output
+
+# Step 1: Load and Explore the Dataset
+# Replace '2015.csv' with the path to your actual World Happiness Report dataset
+happiness_data <- read.csv('2015.csv')
+
+# Check the first few rows to confirm column names
+head(happiness_data)
+
+# Rename columns for easier reference
+colnames(happiness_data) <- c("Country", "Region", "HappinessRank", "HappinessScore", 
+                              "StandardError", "GDP", "SocialSupport", "LifeExpectancy", 
+                              "Freedom", "Corruption", "Generosity", "DystopiaResidual")
+
+# Check the structure and summary of the data to confirm
+str(happiness_data)
+summary(happiness_data)
+
+# Handle missing values by dropping rows with NAs
+happiness_data <- happiness_data %>% drop_na()
+
+# Step 2: Initial Model Fitting
+# Fit a linear regression model with HappinessScore as the response variable
+initial_model <- lm(HappinessScore ~ GDP + SocialSupport + LifeExpectancy + Freedom + 
+                    Generosity + Corruption, data = happiness_data)
+summary(initial_model)
+
+# Step 3: Diagnostics
+# 1. Multicollinearity - Check Variance Inflation Factor (VIF)
+vif(initial_model)
+
+# 2. Heteroscedasticity - Breusch-Pagan test
+bptest(initial_model)
+
+# 3. Influential Points - Check for high leverage or influential points
+influence_measures <- influence.measures(initial_model)
+summary(influence_measures)
+
+# Step 4: Remediation
+# If heteroscedasticity is significant, use robust standard errors
+robust_model <- coeftest(initial_model, vcov = vcovHC(initial_model, type = "HC3"))
+print(robust_model)
+
+# If a log transformation is necessary due to heteroscedasticity, fit a log-transformed model
+log_model <- lm(log(HappinessScore) ~ GDP + SocialSupport + LifeExpectancy + Freedom + 
+                Generosity + Corruption, data = happiness_data)
+summary(log_model)
+
+# Step 5: Model Comparison
+# Compare R-squared and AIC of the initial and log-transformed models
+cat("Initial Model R-squared:", summary(initial_model)$r.squared, "\n")
+cat("Log Model R-squared:", summary(log_model)$r.squared, "\n")
+cat("Initial Model AIC:", AIC(initial_model), "\n")
+cat("Log Model AIC:", AIC(log_model), "\n")
+
+# Step 6: Diagnostics for Final Model
+# Plot diagnostics for final model choice
+par(mfrow = c(2, 2))
+plot(log_model)
+
+
+```
+
+## R Markdown
+
+
+---
+title: "Project Regression 564"
+author: "Shruti Ramchandra Patil"
+date: "2024-11-06"
+output: html_document
+---
+
+```{r combined-analysis, include=FALSE, echo=FALSE, fig.height=8, fig.width=8}
+# Load Required Libraries
+library(tidyverse)    # For data manipulation and visualization
+library(car)          # For multicollinearity (VIF)
+library(lmtest)       # For heteroscedasticity test
+library(sandwich)     # For robust standard errors
+library(broom)        # For tidying model output
+library(corrplot)     # For correlation matrix visualization
+
+# Step 1: Load and Explore the Dataset
+# Replace '2015.csv' with the path to your actual World Happiness Report dataset
+happiness_data <- read.csv('2015.csv')
+
+# Rename columns for easier reference
+colnames(happiness_data) <- c("Country", "Region", "HappinessRank", "HappinessScore", 
+                              "StandardError", "GDP", "SocialSupport", "LifeExpectancy", 
+                              "Freedom", "Corruption", "Generosity", "DystopiaResidual")
+
+# Drop rows with missing values
+happiness_data <- happiness_data %>% drop_na()
+
+# Data Exploration and Visualization
+# 1. Distribution of Happiness Score
+ggplot(happiness_data, aes(x = HappinessScore)) +
+  geom_histogram(bins = 30, fill = "blue", color = "white", alpha = 0.7) +
+  labs(title = "Distribution of Happiness Score", x = "Happiness Score", y = "Frequency")
+
+# 2. Scatter Plot of Predictors vs. Happiness Score
+happiness_data %>%
+  select(HappinessScore, GDP, SocialSupport, LifeExpectancy, Freedom, Corruption, Generosity) %>%
+  gather(key = "Predictor", value = "Value", -HappinessScore) %>%
+  ggplot(aes(x = Value, y = HappinessScore)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  facet_wrap(~ Predictor, scales = "free_x") +
+  labs(title = "Scatter Plot of Predictors vs. Happiness Score", x = "Predictor Value", y = "Happiness Score")
+```
+
+
+```{r}
+# 3. Correlation Matrix for Multicollinearity
+cor_matrix <- happiness_data %>%
+  select(GDP, SocialSupport, LifeExpectancy, Freedom, Corruption, Generosity) %>%
+  cor()
+
+corrplot(cor_matrix, method = "circle", type = "upper", tl.cex = 0.8)
+
+# Step 2: Initial Model Fitting and Diagnostics
+# Fit a linear regression model
+initial_model <- lm(HappinessScore ~ GDP + SocialSupport + LifeExpectancy + Freedom + 
+                    Generosity + Corruption, data = happiness_data)
+summary(initial_model)
+
+# Diagnostics for Initial Model
+# 1. Multicollinearity Check (VIF)
+vif(initial_model)
+
+# 2. Heteroscedasticity Check (Breusch-Pagan Test)
+bptest(initial_model)
+
+# 3. Influential Points
+influence_measures <- influence.measures(initial_model)
+summary(influence_measures)
+
+# Step 3: Model Remediation
+# 1. Robust Standard Errors
+robust_model <- coeftest(initial_model, vcov = vcovHC(initial_model, type = "HC3"))
+print(robust_model)
+
+# 2. Log-Transformed Model (If Needed)
+log_model <- lm(log(HappinessScore) ~ GDP + SocialSupport + LifeExpectancy + Freedom + 
+                Generosity + Corruption, data = happiness_data)
+summary(log_model)
+
+# Step 4: Model Comparison
+cat("Initial Model R-squared:", summary(initial_model)$r.squared, "\n")
+cat("Log Model R-squared:", summary(log_model)$r.squared, "\n")
+cat("Initial Model AIC:", AIC(initial_model), "\n")
+cat("Log Model AIC:", AIC(log_model), "\n")
+
+# Step 5: Diagnostic Plots for Final Model
+par(mfrow = c(2, 2))
+plot(log_model)
+```
+
